@@ -166,7 +166,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen" style={{ background: '#F5F8FF' }}>
 
-      {/* 초기화 확인 모달 */}
+      {/* 리셋 확인 모달 */}
       {showResetConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-scaleIn">
@@ -174,13 +174,13 @@ export default function AdminDashboard() {
               <RotateCcw className="w-6 h-6 text-red-500" />
             </div>
             <h3 className="font-black text-gray-900 text-lg text-center mb-1">
-              <Bi ko="초기화 확인" en="Confirm Reset" />
+              <Bi ko="리셋 확인" en="Confirm Delete All" />
             </h3>
             <p className="text-gray-500 text-sm text-center mb-1">
-              모든 학습자 데이터를 삭제하고 교육을 처음 상태로 초기화합니다.
+              모든 응답 데이터를 삭제하고 세션을 초기화합니다.
             </p>
             <p className="text-gray-400 text-xs text-center italic mb-4">
-              All learner data will be deleted and the session will be reset.
+              All response data will be deleted and the session will be reset.
             </p>
             <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 mb-5 text-center">
               <p className="text-red-600 text-sm font-bold">이 작업은 되돌릴 수 없습니다</p>
@@ -268,7 +268,7 @@ export default function AdminDashboard() {
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap justify-end">
                 {notStarted && (
                   <button onClick={() => liveControl('start')}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-white text-sm"
@@ -277,13 +277,20 @@ export default function AdminDashboard() {
                     <Bi ko="교육 시작" en="Start" />
                   </button>
                 )}
-                {(notStarted || isActive || isFinished) && (
-                  <button onClick={() => setShowResetConfirm(true)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl font-medium text-red-500 text-sm bg-red-50 hover:bg-red-100 border border-red-200">
+                {/* 초기화: 세션만 리셋, 데이터 유지 */}
+                {(isActive || isFinished) && (
+                  <button onClick={() => liveControl('reset')}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl font-medium text-gray-600 text-sm bg-gray-100 hover:bg-gray-200 border border-gray-200">
                     <RotateCcw className="w-4 h-4" />
-                    <Bi ko="초기화" en="Reset" />
+                    <Bi ko="초기화" en="Restart" />
                   </button>
                 )}
+                {/* 리셋: 모든 데이터 삭제 */}
+                <button onClick={() => setShowResetConfirm(true)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl font-medium text-red-500 text-sm bg-red-50 hover:bg-red-100 border border-red-200">
+                  <RotateCcw className="w-4 h-4" />
+                  <Bi ko="리셋" en="Delete All" />
+                </button>
               </div>
             </div>
 
