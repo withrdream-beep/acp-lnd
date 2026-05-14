@@ -507,87 +507,71 @@ export default function AdminDashboard() {
               ))}
             </div>
 
-            {/* 취약 문항 분석 */}
-            {(questionStats.length > 0 || caseStats.length > 0) && (
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+            {/* 취약 문항 분석 — 퀴즈 정답률 낮은 순 5개 */}
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-red-400" />
                   <h3 className="font-bold text-gray-800 text-sm">
-                    <Bi ko="취약 문항 분석 — 추가 학습이 필요한 영역" en="Weak Areas — Topics Needing Review" />
+                    <Bi ko="취약 문항 분석" en="Weak Area Analysis" />
                   </h3>
                 </div>
+                <span className="text-xs text-gray-400">
+                  퀴즈 정답률 낮은 순 / Quiz — Lowest Correct Rate
+                </span>
+              </div>
 
+              {questionStats.length === 0 ? (
+                <div className="px-5 py-10 text-center text-gray-400 text-sm">
+                  아직 응답 데이터가 없습니다 / No response data yet
+                </div>
+              ) : (
                 <div className="divide-y divide-gray-50">
-                  {/* 퀴즈 취약 문항 (상위 3개) */}
-                  {questionStats.slice(0, 3).map((qs, i) => {
+                  {questionStats.slice(0, 5).map((qs, i) => {
                     const rate = qs.correct_rate ?? 0;
                     const barColor = rate < 40 ? '#ef4444' : rate < 70 ? '#f59e0b' : '#22c55e';
                     const label = rate < 40 ? '집중 학습 필요' : rate < 70 ? '추가 학습 권장' : '양호';
                     const labelEn = rate < 40 ? 'Focus Required' : rate < 70 ? 'Review Recommended' : 'Good';
                     return (
                       <div key={qs.id} className="px-5 py-4">
+                        {/* 문항 번호 + 질문 + 정답률 */}
                         <div className="flex items-start gap-3 mb-2">
-                          <span className="shrink-0 px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-700 mt-0.5">퀴즈</span>
-                          <p className="text-sm text-gray-800 font-medium flex-1 leading-snug line-clamp-2">{qs.question_text}</p>
-                          <span className="shrink-0 text-sm font-black ml-2" style={{ color: barColor }}>{rate}%</span>
-                        </div>
-                        <div className="ml-14">
-                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
-                            <div className="h-full rounded-full" style={{ width: `${rate}%`, backgroundColor: barColor }} />
+                          <span className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-black text-white mt-0.5"
+                            style={{ background: barColor }}>
+                            {i + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-800 font-semibold leading-snug">
+                              {qs.question_text}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {qs.type === 'ox' ? 'True / False' : 'Multiple Choice'} · {qs.attempt_count}명 응답 / {qs.attempt_count} responses
+                            </p>
                           </div>
-                          <div className="flex items-start gap-1.5 bg-gray-50 rounded-xl px-3 py-2.5">
-                            <span className="text-base shrink-0">📖</span>
-                            <div>
-                              <p className="text-xs font-bold mb-0.5" style={{ color: barColor }}>
-                                {label} / {labelEn}
-                              </p>
-                              <p className="text-xs text-gray-600 leading-relaxed">{qs.explanation}</p>
-                            </div>
-                          </div>
+                          <span className="shrink-0 text-lg font-black" style={{ color: barColor }}>{rate}%</span>
                         </div>
-                      </div>
-                    );
-                  })}
 
-                  {/* 케이스 취약 문항 (상위 3개) */}
-                  {caseStats.slice(0, 3).map((cs) => {
-                    const rate = cs.correct_rate ?? 0;
-                    const barColor = rate < 40 ? '#ef4444' : rate < 70 ? '#f59e0b' : '#22c55e';
-                    const label = rate < 40 ? '집중 학습 필요' : rate < 70 ? '추가 학습 권장' : '양호';
-                    const labelEn = rate < 40 ? 'Focus Required' : rate < 70 ? 'Review Recommended' : 'Good';
-                    return (
-                      <div key={cs.id} className="px-5 py-4">
-                        <div className="flex items-start gap-3 mb-2">
-                          <span className="shrink-0 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-700 mt-0.5">케이스</span>
-                          <p className="text-sm text-gray-800 font-medium flex-1 leading-snug line-clamp-2">{cs.question}</p>
-                          <span className="shrink-0 text-sm font-black ml-2" style={{ color: barColor }}>{rate}%</span>
+                        {/* 바 차트 */}
+                        <div className="ml-9 mb-3">
+                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-700"
+                              style={{ width: `${rate}%`, backgroundColor: barColor }} />
+                          </div>
                         </div>
-                        <div className="ml-14">
-                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
-                            <div className="h-full rounded-full" style={{ width: `${rate}%`, backgroundColor: barColor }} />
-                          </div>
-                          <div className="flex items-start gap-1.5 bg-gray-50 rounded-xl px-3 py-2.5">
-                            <span className="text-base shrink-0">📖</span>
-                            <div>
-                              <p className="text-xs font-bold mb-0.5" style={{ color: barColor }}>
-                                {label} / {labelEn}
-                              </p>
-                              <p className="text-xs text-gray-600 leading-relaxed">{cs.explanation}</p>
-                            </div>
-                          </div>
+
+                        {/* 학습 가이드 */}
+                        <div className="ml-9 bg-gray-50 rounded-xl px-4 py-3">
+                          <p className="text-xs font-bold mb-1" style={{ color: barColor }}>
+                            📖 {label} / {labelEn}
+                          </p>
+                          <p className="text-xs text-gray-600 leading-relaxed">{qs.explanation}</p>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            )}
-
-            {questionStats.length === 0 && caseStats.length === 0 && (
-              <div className="bg-white rounded-2xl p-8 text-center text-gray-400 text-sm shadow-sm">
-                아직 응답 데이터가 없습니다 / No response data yet
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="flex justify-end">
               <button onClick={handleExport}
