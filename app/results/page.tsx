@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Award, CheckCircle, XCircle, Download, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { translations, Lang, T } from '@/lib/translations';
 
 interface Results {
@@ -13,17 +13,14 @@ interface Results {
   quiz_total: number;
   case_correct: number;
   case_total: number;
-  passed: boolean;
-  certificate: { id: string; certificate_code: string } | null;
 }
 
 export default function ResultsPage() {
   const router = useRouter();
   const [results, setResults] = useState<Results | null>(null);
   const [loading, setLoading] = useState(true);
-  const [issuing, setIssuing] = useState(false);
-  const [learnerId, setLearnerId] = useState('');
   const [nickname, setNickname] = useState('');
+  const [lang, setLang] = useState<Lang>('ko');
   const [t, setT] = useState<T>(translations.ko);
 
   const loadResults = useCallback(async (id: string) => {
@@ -38,107 +35,65 @@ export default function ResultsPage() {
     const nick = sessionStorage.getItem('nickname');
     const lang = (sessionStorage.getItem('lang') || 'ko') as Lang;
     if (!id) { router.push('/'); return; }
-    setLearnerId(id);
     setNickname(nick || '');
+    setLang(lang);
     setT(translations[lang] ?? translations.ko);
     loadResults(id);
   }, [router, loadResults]);
 
-  async function issueCertificate() {
-    setIssuing(true);
-    const res = await fetch('/api/certificate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ learner_id: learnerId }),
-    });
-    const data = await res.json();
-    if (data.certificate) router.push(`/certificate/${data.certificate.id}`);
-    setIssuing(false);
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F8FF' }}>
-        <div className="w-12 h-12 border-4 border-blue-900 border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#1E6FEB', borderTopColor: 'transparent' }} />
       </div>
     );
   }
   if (!results) return null;
 
-  const scoreColor = results.total_score >= 90 ? '#22c55e' : results.total_score >= 70 ? '#3b82f6' : '#ef4444';
-
   return (
     <div className="min-h-screen" style={{ background: '#F5F8FF' }}>
+      {/* 헤더 */}
       <div style={{ background: '#1E6FEB' }} className="px-4 py-10 text-center">
-        <Award className="w-10 h-10 text-yellow-300 mx-auto mb-3" />
         <h1 className="text-white text-2xl font-bold">{t.trainingComplete}</h1>
         <p className="text-white/70 text-sm mt-1">{t.yourResults(nickname)}</p>
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-6 space-y-4">
-        {/* 총점 */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 text-center animate-fadeIn">
-          <p className="text-gray-500 text-sm mb-2">{t.finalScore}</p>
-          <div className="relative inline-flex items-center justify-center w-32 h-32 mb-3">
-            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#f3f4f6" strokeWidth="3" />
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke={scoreColor} strokeWidth="3"
-                strokeDasharray={`${results.total_score} ${100 - results.total_score}`} strokeLinecap="round" />
-            </svg>
-            <div className="absolute text-center">
-              <span className="text-3xl font-black" style={{ color: scoreColor }}>{results.total_score}</span>
-              <span className="text-gray-400 text-xs block">점</span>
-            </div>
-          </div>
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold ${results.passed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-            {results.passed ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-            {results.passed ? t.passedLabel : t.failedLabel}
-          </div>
-        </div>
-
         {/* 세부 점수 */}
         <div className="bg-white rounded-2xl shadow-sm p-5 animate-fadeIn">
-          <h3 className="font-bold text-gray-800 mb-4">{t.scoreBreakdown}</h3>
-          <div className="space-y-4">
+          <h3 className="font-bold text-gray-800 mb-5">{t.scoreBreakdown}</h3>
+          <div className="space-y-5">
             {[
-              { label: t.quizLabel, score: results.quiz_score, correct: results.quiz_correct, total: results.quiz_total, color: '#1E6FEB' },
-              { label: t.caseStudyLabel, score: results.case_score, correct: results.case_correct, total: results.case_total, color: '#FFB800' },
-            ].map(({ label, score, correct, total, color }) => (
+              { label: t.quizLabel, correct: results.quiz_correct, total: results.quiz_total, score: results.quiz_score, color: '#1E6FEB' },
+              { label: t.caseStudyLabel, correct: results.case_correct, total: results.case_total, score: results.case_score, color: '#FFB800' },
+            ].map(({ label, correct, total, score, color }) => (
               <div key={label}>
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-sm text-gray-600">{label}</span>
-                  <span className="text-sm font-bold" style={{ color }}>{correct}/{total} ({score}점)</span>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-semibold text-gray-700">{label}</span>
+                  <span className="text-sm font-bold" style={{ color }}>
+                    {correct}/{total} ({score}점)
+                  </span>
                 </div>
-                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${score}%`, backgroundColor: color }} />
+                <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${score}%`, backgroundColor: color }}
+                  />
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* 버튼 */}
-        <div className="space-y-3 animate-fadeIn">
-          {results.passed && !results.certificate && (
-            <button onClick={issueCertificate} disabled={issuing}
-              className="w-full py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg, #FFB800, #D49A00)' }}>
-              <Download className="w-5 h-5" />
-              {issuing ? t.issuingCert : t.issueCert}
-            </button>
-          )}
-          {results.certificate && (
-            <button onClick={() => router.push(`/certificate/${results.certificate!.id}`)}
-              className="w-full py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2"
-              style={{ background: 'linear-gradient(135deg, #FFB800, #D49A00)' }}>
-              <Award className="w-5 h-5" /> {t.viewCert}
-            </button>
-          )}
-          <button onClick={() => { sessionStorage.clear(); router.push('/'); }}
-            className="w-full py-3 rounded-xl font-medium text-gray-500 flex items-center justify-center gap-2 bg-white border border-gray-200">
-            <RotateCcw className="w-4 h-4" /> {t.goHome}
-          </button>
-        </div>
+        {/* 첫 페이지로 버튼 (빨간색) */}
+        <button
+          onClick={() => router.push('/select')}
+          className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2 animate-fadeIn shadow-lg"
+          style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}
+        >
+          <RotateCcw className="w-5 h-5" />
+          {lang === 'en' ? 'Back to Home' : '첫 페이지로'}
+        </button>
       </div>
     </div>
   );

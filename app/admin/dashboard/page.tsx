@@ -91,13 +91,16 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!adminPw) return;
+    if (liveIntervalRef.current) clearInterval(liveIntervalRef.current);
+
     if (tab === 'live') {
       liveIntervalRef.current = setInterval(() => loadLive(adminPw), 3000);
-    } else {
-      if (liveIntervalRef.current) clearInterval(liveIntervalRef.current);
+    } else if (tab === 'leaderboard') {
+      liveIntervalRef.current = setInterval(() => loadStats(adminPw), 5000);
     }
+
     return () => { if (liveIntervalRef.current) clearInterval(liveIntervalRef.current); };
-  }, [tab, adminPw, loadLive]);
+  }, [tab, adminPw, loadLive, loadStats]);
 
   async function liveControl(action: string) {
     await fetch('/api/admin/live', {
@@ -495,25 +498,36 @@ export default function AdminDashboard() {
           const rank2 = leaderboard.filter(e => e.rank === 2);
           const rank3 = leaderboard.filter(e => e.rank === 3);
 
-          const rankStyles = [
-            { bg: 'linear-gradient(135deg, #1E6FEB, #1454C4)', nameColor: 'text-white', scoreColor: 'text-yellow-300', sub: 'text-white/60', medal: '#FFB800', icon: Trophy, koLabel: '1위', enLabel: '1st', minH: '110px', py: 'py-6' },
-            { bg: '#e8e8e8', nameColor: 'text-gray-800', scoreColor: 'text-gray-700', sub: 'text-gray-400', medal: '#C0C0C0', icon: Medal, koLabel: '2위', enLabel: '2nd', minH: '80px', py: 'py-4' },
-            { bg: '#f5e6d0', nameColor: 'text-gray-800', scoreColor: 'text-amber-700', sub: 'text-gray-400', medal: '#CD7F32', icon: Medal, koLabel: '3위', enLabel: '3rd', minH: '70px', py: 'py-3' },
+          // 시상대 설정: [0]=1위, [1]=2위, [2]=3위
+          const podiumConfig = [
+            { blockH: 130, bg: 'linear-gradient(135deg, #1E6FEB, #1454C4)', medalBg: '#FFB800', icon: Trophy, scoreColor: '#FFD700', nameColor: '#fff', labelColor: 'rgba(255,255,255,0.7)', koLabel: '1위', enLabel: '1st' },
+            { blockH: 85,  bg: 'linear-gradient(135deg, #9ca3af, #6b7280)', medalBg: '#C0C0C0', icon: Medal,  scoreColor: '#fff',    nameColor: '#fff', labelColor: 'rgba(255,255,255,0.7)', koLabel: '2위', enLabel: '2nd' },
+            { blockH: 55,  bg: 'linear-gradient(135deg, #d97706, #b45309)', medalBg: '#CD7F32', icon: Medal,  scoreColor: '#fff',    nameColor: '#fff', labelColor: 'rgba(255,255,255,0.7)', koLabel: '3위', enLabel: '3rd' },
           ];
 
-          const PodiumCol = ({ entries, sIdx }: { entries: LeaderboardEntry[]; sIdx: number }) => {
-            if (!entries.length) return null;
-            const s = rankStyles[sIdx];
-            const I = s.icon;
+          // 이름+점수는 시상대 블록 위, 블록 자체는 고정 높이로 시상대 표현
+          const PodiumCol = ({ entries, cfgIdx }: { entries: LeaderboardEntry[]; cfgIdx: number }) => {
+            if (!entries.length) return <div className="flex-1" />;
+            const c = podiumConfig[cfgIdx];
+            const I = c.icon;
             return (
-              <div className="text-center flex-1">
-                <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-2" style={{ background: s.medal }}>
-                  <I className="w-7 h-7 text-white" />
+              <div className="flex-1 flex flex-col items-center">
+                {/* 시상대 위: 메달 + 이름 + 점수 */}
+                <div className="w-10 h-10 rounded-full flex items-center justify-center mb-2" style={{ background: c.medalBg }}>
+                  <I className="w-5 h-5 text-white" />
                 </div>
-                <div className={`rounded-t-xl ${s.py} px-2 flex flex-col items-center gap-1`} style={{ background: s.bg, minHeight: s.minH }}>
-                  {entries.map(e => <p key={e.learner_id} className={`font-bold text-sm ${s.nameColor}`}>{e.nickname}</p>)}
-                  <p className={`text-lg font-black ${s.scoreColor}`}>{entries[0].combined_rate}%</p>
-                  <p className={`text-xs ${s.sub}`}>{s.koLabel} / {s.enLabel}</p>
+                <div className="text-center mb-2 px-1">
+                  {entries.map(e => (
+                    <p key={e.learner_id} className="font-black text-gray-800 text-sm leading-tight">{e.nickname}</p>
+                  ))}
+                  <p className="font-black text-base mt-0.5" style={{ color: '#1E6FEB' }}>{entries[0].combined_rate}%</p>
+                </div>
+                {/* 시상대 블록: 고정 높이 */}
+                <div
+                  className="w-full rounded-t-xl flex items-center justify-center"
+                  style={{ background: c.bg, height: `${c.blockH}px` }}
+                >
+                  <p className="text-xs font-bold" style={{ color: c.labelColor }}>{c.koLabel} / {c.enLabel}</p>
                 </div>
               </div>
             );
@@ -528,13 +542,20 @@ export default function AdminDashboard() {
                       <Trophy className="w-5 h-5 text-yellow-500" />
                       <Bi ko="Top 3 우수 학습자" en="Top 3 Outstanding Learners" />
                     </h2>
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                      <p className="text-xs text-green-600 font-medium">
+                        <Bi ko="실시간 업데이트" en="Live Updates" />
+                      </p>
+                    </div>
                     <p className="text-center text-xs text-gray-400 mb-6">
-                      퀴즈 + 케이스 정답률 기준 / Based on Quiz + Case Correct Rate · 동점자 모두 포함 / Ties included
+                      완료한 항목 기준 정답률 / Correct rate based on completed activities · 동점자 모두 포함 / Ties included
                     </p>
-                    <div className="flex items-end justify-center gap-3">
-                      <PodiumCol entries={rank2} sIdx={1} />
-                      <PodiumCol entries={rank1} sIdx={0} />
-                      <PodiumCol entries={rank3} sIdx={2} />
+                    {/* items-end 로 시상대 블록 바닥을 맞춤 */}
+                    <div className="flex items-end justify-center gap-2">
+                      <PodiumCol entries={rank2} cfgIdx={1} />
+                      <PodiumCol entries={rank1} cfgIdx={0} />
+                      <PodiumCol entries={rank3} cfgIdx={2} />
                     </div>
                   </div>
 

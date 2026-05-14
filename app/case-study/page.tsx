@@ -289,14 +289,17 @@ export default function CaseStudyPage() {
               </div>
             )}
 
-            {/* 다음 케이스 버튼 — 어드민이 다음으로 넘어갔을 때만 활성화 */}
+            {/* 다음 케이스 / 결과 버튼 */}
             {currentIdx > displayedIndex ? (
               <button
-                onClick={handleReadyForNext}
+                onClick={() => currentIdx >= 99 ? router.push('/results') : handleReadyForNext()}
                 className="w-full py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 animate-fadeIn"
-                style={{ background: 'linear-gradient(135deg, #FFB800, #D49A00)' }}
+                style={{ background: currentIdx >= 99
+                  ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                  : 'linear-gradient(135deg, #FFB800, #D49A00)'
+                }}
               >
-                {currentIdx >= 99 ? t.viewResults : `다음 케이스`}
+                {currentIdx >= 99 ? (lang === 'en' ? 'View My Results' : '내 결과 보기') : `다음 케이스`}
                 <ChevronRight className="w-5 h-5" />
               </button>
             ) : (
