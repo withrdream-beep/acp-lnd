@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Users, Award, TrendingUp, Target, Download, Trophy, Medal,
+  Users, Target, Download, Trophy, Medal,
   Star, BarChart3, LogOut, RefreshCw, Play, ChevronRight,
   RotateCcw, Eye, CheckCircle
 } from 'lucide-react';
@@ -11,11 +11,26 @@ import { CaseStudy } from '@/types';
 
 interface Stats {
   total_learners: number;
-  completed_learners: number;
   avg_quiz_score: number;
   avg_case_score: number;
-  avg_total_score: number;
-  pass_rate: number;
+}
+
+interface QuestionStat {
+  id: string;
+  type: string;
+  question_text: string;
+  explanation: string;
+  attempt_count: number;
+  correct_rate: number | null;
+}
+
+interface CaseStat {
+  id: string;
+  scenario_text: string;
+  question: string;
+  explanation: string;
+  attempt_count: number;
+  correct_rate: number | null;
 }
 
 interface LeaderboardEntry {
@@ -59,6 +74,8 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('live');
   const [stats, setStats] = useState<Stats | null>(null);
+  const [questionStats, setQuestionStats] = useState<QuestionStat[]>([]);
+  const [caseStats, setCaseStats] = useState<CaseStat[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [liveData, setLiveData] = useState<LiveData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,6 +89,8 @@ export default function AdminDashboard() {
     if (res.status === 401) { router.push('/admin'); return; }
     const data = await res.json();
     setStats(data.stats);
+    setQuestionStats(data.question_stats || []);
+    setCaseStats(data.case_stats || []);
     setLeaderboard(data.leaderboard || []);
     setLoading(false);
   }, [router]);
@@ -462,15 +481,14 @@ export default function AdminDashboard() {
 
         {/* ── 전체 현황 / Overview ── */}
         {tab === 'overview' && stats && (
-          <div className="space-y-6 animate-fadeIn">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="space-y-5 animate-fadeIn">
+
+            {/* 주요 지표 3개 */}
+            <div className="grid grid-cols-3 gap-4">
               {[
                 { ko: '총 학습자', en: 'Total Learners', value: stats.total_learners, unit: '명', icon: Users, color: '#1E6FEB' },
-                { ko: '교육 완료', en: 'Completed', value: stats.completed_learners, unit: '명', icon: Award, color: '#22c55e' },
-                { ko: '합격률', en: 'Pass Rate', value: stats.pass_rate, unit: '%', icon: TrendingUp, color: '#FFB800' },
-                { ko: '평균 퀴즈', en: 'Avg Quiz', value: stats.avg_quiz_score, unit: '점', icon: Target, color: '#3b82f6' },
-                { ko: '평균 케이스', en: 'Avg Case', value: stats.avg_case_score, unit: '점', icon: Target, color: '#8b5cf6' },
-                { ko: '평균 총점', en: 'Avg Total', value: stats.avg_total_score, unit: '점', icon: Star, color: '#ef4444' },
+                { ko: '퀴즈 평균', en: 'Avg Quiz', value: stats.avg_quiz_score, unit: '%', icon: Target, color: '#8b5cf6' },
+                { ko: '케이스 평균', en: 'Avg Case', value: stats.avg_case_score, unit: '%', icon: Star, color: '#FFB800' },
               ].map(({ ko, en, value, unit, icon: Icon, color }) => (
                 <div key={ko} className="bg-white rounded-2xl p-5 shadow-sm">
                   <div className="flex items-center justify-between mb-3">
@@ -488,6 +506,89 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
+
+            {/* 취약 문항 분석 */}
+            {(questionStats.length > 0 || caseStats.length > 0) && (
+              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-400" />
+                  <h3 className="font-bold text-gray-800 text-sm">
+                    <Bi ko="취약 문항 분석 — 추가 학습이 필요한 영역" en="Weak Areas — Topics Needing Review" />
+                  </h3>
+                </div>
+
+                <div className="divide-y divide-gray-50">
+                  {/* 퀴즈 취약 문항 (상위 3개) */}
+                  {questionStats.slice(0, 3).map((qs, i) => {
+                    const rate = qs.correct_rate ?? 0;
+                    const barColor = rate < 40 ? '#ef4444' : rate < 70 ? '#f59e0b' : '#22c55e';
+                    const label = rate < 40 ? '집중 학습 필요' : rate < 70 ? '추가 학습 권장' : '양호';
+                    const labelEn = rate < 40 ? 'Focus Required' : rate < 70 ? 'Review Recommended' : 'Good';
+                    return (
+                      <div key={qs.id} className="px-5 py-4">
+                        <div className="flex items-start gap-3 mb-2">
+                          <span className="shrink-0 px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-700 mt-0.5">퀴즈</span>
+                          <p className="text-sm text-gray-800 font-medium flex-1 leading-snug line-clamp-2">{qs.question_text}</p>
+                          <span className="shrink-0 text-sm font-black ml-2" style={{ color: barColor }}>{rate}%</span>
+                        </div>
+                        <div className="ml-14">
+                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
+                            <div className="h-full rounded-full" style={{ width: `${rate}%`, backgroundColor: barColor }} />
+                          </div>
+                          <div className="flex items-start gap-1.5 bg-gray-50 rounded-xl px-3 py-2.5">
+                            <span className="text-base shrink-0">📖</span>
+                            <div>
+                              <p className="text-xs font-bold mb-0.5" style={{ color: barColor }}>
+                                {label} / {labelEn}
+                              </p>
+                              <p className="text-xs text-gray-600 leading-relaxed">{qs.explanation}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* 케이스 취약 문항 (상위 3개) */}
+                  {caseStats.slice(0, 3).map((cs) => {
+                    const rate = cs.correct_rate ?? 0;
+                    const barColor = rate < 40 ? '#ef4444' : rate < 70 ? '#f59e0b' : '#22c55e';
+                    const label = rate < 40 ? '집중 학습 필요' : rate < 70 ? '추가 학습 권장' : '양호';
+                    const labelEn = rate < 40 ? 'Focus Required' : rate < 70 ? 'Review Recommended' : 'Good';
+                    return (
+                      <div key={cs.id} className="px-5 py-4">
+                        <div className="flex items-start gap-3 mb-2">
+                          <span className="shrink-0 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-700 mt-0.5">케이스</span>
+                          <p className="text-sm text-gray-800 font-medium flex-1 leading-snug line-clamp-2">{cs.question}</p>
+                          <span className="shrink-0 text-sm font-black ml-2" style={{ color: barColor }}>{rate}%</span>
+                        </div>
+                        <div className="ml-14">
+                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
+                            <div className="h-full rounded-full" style={{ width: `${rate}%`, backgroundColor: barColor }} />
+                          </div>
+                          <div className="flex items-start gap-1.5 bg-gray-50 rounded-xl px-3 py-2.5">
+                            <span className="text-base shrink-0">📖</span>
+                            <div>
+                              <p className="text-xs font-bold mb-0.5" style={{ color: barColor }}>
+                                {label} / {labelEn}
+                              </p>
+                              <p className="text-xs text-gray-600 leading-relaxed">{cs.explanation}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {questionStats.length === 0 && caseStats.length === 0 && (
+              <div className="bg-white rounded-2xl p-8 text-center text-gray-400 text-sm shadow-sm">
+                아직 응답 데이터가 없습니다 / No response data yet
+              </div>
+            )}
+
             <div className="flex justify-end">
               <button onClick={handleExport}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white text-sm"
